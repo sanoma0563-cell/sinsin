@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>体組成分析・Tanita風レポート</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP","Yu Gothic",sans-serif;background:#eef1f5;margin:0;padding:18px;color:#30343b}
+.container{max-width:1000px;margin:auto;background:#fff;padding:24px;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.10)}
+h1{text-align:center;margin:4px 0 8px;font-size:28px;color:#26364a}
+.subtitle{text-align:center;color:#697586;margin-bottom:24px}
+h2{border-left:6px solid #3d7cc9;padding-left:10px;margin:28px 0 12px;font-size:20px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.input-row{display:flex;align-items:center;gap:8px;padding:7px 0}
+.input-row label{width:130px;font-weight:600}
+input,select{padding:9px;font-size:15px;border:1px solid #ccd3dc;border-radius:7px;width:130px}
+.unit{white-space:nowrap}
+button{width:100%;padding:14px;margin-top:20px;font-size:18px;font-weight:bold;border:0;border-radius:9px;background:#3d7cc9;color:white;cursor:pointer}
+button:hover{background:#2f66aa}
+.print-btn{background:#5b6775;margin-top:10px}
+.print-btn:hover{background:#46515d}
+@media print{
+  body{background:#fff;padding:0}
+  .container{max-width:none;box-shadow:none;padding:10mm;border-radius:0}
+  input,select,button{display:none!important}
+  h2{break-after:avoid}
+  .chart-box,.card,.summary,.balance-wrap{break-inside:avoid}
+  canvas{max-width:100%!important}
+  .note{color:#444}
+}
+.summary{background:#eef6ff;padding:16px;border-radius:10px;line-height:1.8;margin-top:20px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{background:#f8fafc;padding:14px;border-radius:9px;border-left:5px solid #bbb}
+.good{border-left-color:#28a745}.low{border-left-color:#e0a800}.high{border-left-color:#dc3545}
+.value{font-size:20px;font-weight:700}
+.highlight{font-size:22px;font-weight:700;color:#0d6efd}
+.table{width:100%;border-collapse:collapse;margin-top:10px}
+.table th,.table td{padding:9px 8px;text-align:center;border-bottom:1px solid #e1e5ea}
+.table th{background:#f0f3f7}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.chart-box{background:#fbfcfe;border:1px solid #e1e6ec;border-radius:12px;padding:12px}
+.chart-box canvas{width:100%!important;height:330px!important}
+.chart-wide canvas{height:390px!important}
+.note{font-size:12px;color:#6c757d;line-height:1.6;margin-top:10px}
+.badge{display:inline-block;padding:4px 9px;border-radius:999px;background:#e8f1ff;color:#245a9a;font-size:12px}
+.balance-wrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:center}
+.body-svg{width:100%;height:420px;background:#f7f9fb;border-radius:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-top:8px}
+.dot{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:4px}
+.small{font-size:13px;color:#697586}
+@media(max-width:800px){.grid,.cards,.chart-grid,.balance-wrap{grid-template-columns:1fr}.chart-box canvas{height:300px!important}.input-row label{width:120px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Body Composition Analyzer</h1>
+<div class="subtitle">体組成・部位別筋肉量・体脂肪率による総合分析</div>
+
+<h2>基本情報</h2>
+<div class="grid">
+  <div class="input-row"><label>年齢</label><input type="number" id="age" value="54"><span class="unit">歳</span></div>
+  <div class="input-row"><label>性別</label><select id="sex"><option value="male" selected>男性</option><option value="female">女性</option></select></div>
+  <div class="input-row"><label>身長</label><input type="number" id="height" value="163" step="0.1"><span class="unit">cm</span></div>
+</div>
+
+<h2>全身測定値</h2>
+<div class="grid">
+  <div class="input-row"><label>体重</label><input type="number" id="weight" value="65.8" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>体脂肪率</label><input type="number" id="bodyFat" value="20.0" step="0.1"><span class="unit">%</span></div>
+  <div class="input-row"><label>体水分量</label><input type="number" id="water" value="36.5" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>筋肉量</label><input type="number" id="muscle" value="49.9" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>内臓脂肪レベル</label><input type="number" id="visceral" value="12" step="0.1"></div>
+  <div class="input-row"><label>推定骨量</label><input type="number" id="bone" value="2.7" step="0.1"><span class="unit">kg</span></div>
+</div>
+
+<h2>部位別筋肉量</h2>
+<div class="grid">
+  <div class="input-row"><label>右腕</label><input type="number" id="armR" value="2.5" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>左腕</label><input type="number" id="armL" value="2.5" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>体幹</label><input type="number" id="trunk" value="27.5" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>右脚</label><input type="number" id="legR" value="8.6" step="0.1"><span class="unit">kg</span></div>
+  <div class="input-row"><label>左脚</label><input type="number" id="legL" value="8.8" step="0.1"><span class="unit">kg</span></div>
+</div>
+
+<button onclick="calculate()">体組成を計算してレポートを表示</button>
+<button class="print-btn" onclick="window.print()">記録を印刷する</button>
+<div id="result"></div>
+</div>
+
+<script>
+let charts=[];
+
+function val(id){return Number(document.getElementById(id).value)}
+function judge(value,min,max){
+  if(value<min)return {text:"低い",cls:"low"};
+  if(value>max)return {text:"高い",cls:"high"};
+  return {text:"標準範囲",cls:"good"};
+}
+function destroyCharts(){charts.forEach(c=>c.destroy());charts=[]}
+
+function calculate(){
+ const age=val("age"), sex=document.getElementById("sex").value, height=val("height");
+ const weight=val("weight"), bodyFat=val("bodyFat"), water=val("water");
+ const muscle=val("muscle"), visceral=val("visceral"), bone=val("bone");
+ const armR=val("armR"),armL=val("armL"),legR=val("legR"),legL=val("legL"),trunk=val("trunk");
+ if(!age||!height||!weight){alert("年齢・身長・体重を入力してください。");return}
+ const bmi=weight/((height/100)**2);
+
+ // 標準範囲（このページの比較用目安）
+ // 体重：BMI 18.5～24.9から身長別に算出
+ const standardWeightMin=18.5*((height/100)**2);
+ const standardWeightMax=24.9*((height/100)**2);
+ const standardBMI="18.5～24.9";
+ // 筋肉量・推定骨量は写真に記載された標準範囲を使用（身長・年齢で自動補正する公式値ではない）
+ const standardMuscleMin=43.2;
+ const standardMuscleMax=50.7;
+ const standardBoneMin=2.5;
+ const standardBoneMax=3.2;
+ // 体水分率は男性50～65%、女性45～60%を比較用目安として使用
+ const standardWaterRateMin=sex==="male"?50:45;
+ const standardWaterRateMax=sex==="male"?65:60;
+ const standardWaterMin=weight*standardWaterRateMin/100;
+ const standardWaterMax=weight*standardWaterRateMax/100;
+
+ const armTotalRef=trunk/6; // ★両腕合計の基準：体幹の1/6
+ const armRef=armTotalRef/2; // ★片腕の基準：体幹の1/12
+ const legRef=trunk/3;  // 脚は体幹の1/3
+ const totalArm=armR+armL,totalLeg=legR+legL;
+ const fatMass=weight*bodyFat/100;
+ const fatFree=weight-fatMass;
+ let fatMin,fatMax;
+ if(sex==="male"){if(age<40){fatMin=10;fatMax=20}else if(age<60){fatMin=12;fatMax=22}else{fatMin=15;fatMax=25}}
+ else{if(age<40){fatMin=18;fatMax=28}else if(age<60){fatMin=20;fatMax=30}else{fatMin=22;fatMax=32}}
+ const fatJ=judge(bodyFat,fatMin,fatMax);
+ const bmiJ=judge(bmi,18.5,24.9);
+ const waterRate=weight?water/weight*100:0;
+ const waterJ=sex==="male"?judge(waterRate,55,65):judge(waterRate,50,60);
+ const visJ=visceral<=10?{text:"標準範囲",cls:"good"}:{text:"高め",cls:"high"};
+
+ // 「筋肉総合評価」は各部位を体幹1/6（腕）・1/3（脚）に対する比率で正規化。
+ // 100=基準値。0～120に収めてレーダー表示。
+ const muscleScores=[
+   Math.min(120,armR/armRef*100),Math.min(120,armL/armRef*100),
+   Math.min(120,legR/legRef*100),Math.min(120,legL/legRef*100),
+   Math.min(120,muscle/(weight*0.72)*100)
+ ];
+ const fatScores=[
+   Math.max(0,Math.min(120,(fatMax/bodyFat)*100)),
+   Math.max(0,Math.min(120,(22/bodyFat)*100)),
+   Math.max(0,Math.min(120,(25/bodyFat)*100)),
+   Math.max(0,Math.min(120,(30/bodyFat)*100)),
+   Math.max(0,Math.min(120,(32/bodyFat)*100))
+ ];
+
+ // 脚部筋肉量点数：左右脚を体幹1/3基準に対する平均比率で表示。
+ const legScore=Math.round(((legR+legL)/2)/legRef*100);
+
+ document.getElementById("result").innerHTML=`
+ <div class="summary">
+  <b>総合結果</b><br>
+  身長：${height.toFixed(1)} cm　年齢：${age}歳　性別：${sex==="male"?"男性":"女性"}<br>
+  BMI：<span class="value">${bmi.toFixed(1)}</span> → ${bmiJ.text}　
+  体脂肪率：<span class="value">${bodyFat.toFixed(1)}%</span> → ${fatJ.text}<br>
+  筋肉量：<span class="value">${muscle.toFixed(1)} kg</span>　
+  体水分量：${water.toFixed(1)} kg（体水分率 ${waterRate.toFixed(1)}%）　
+  内臓脂肪レベル：${visceral}
+ </div>
+
+ <h2>全身チェック・標準範囲</h2>
+ <div class="cards">
+  <div class="card ${bmiJ.cls}"><b>BMI</b><br><span class="value">${bmi.toFixed(1)}</span><br>標準 ${standardBMI}<br>${bmiJ.text}</div>
+  <div class="card ${fatJ.cls}"><b>体脂肪率</b><br><span class="value">${bodyFat.toFixed(1)}%</span><br>標準 ${fatMin}～${fatMax}%<br>${fatJ.text}</div>
+  <div class="card ${waterJ.cls}"><b>体水分率</b><br><span class="value">${waterRate.toFixed(1)}%</span><br>目安 ${standardWaterRateMin}～${standardWaterRateMax}%<br>${waterJ.text}</div>
+  <div class="card ${visJ.cls}"><b>内臓脂肪</b><br><span class="value">${visceral}</span><br>目安 10以下<br>${visJ.text}</div>
+ </div>
+
+ <div class="card">
+  <b>標準範囲を数値で確認</b>
+  <table class="table">
+   <tr><th>項目</th><th>現在値</th><th>標準・目安</th><th>判定</th></tr>
+   <tr><td>体重</td><td>${weight.toFixed(1)} kg</td><td>${standardWeightMin.toFixed(1)}～${standardWeightMax.toFixed(1)} kg</td><td>${judge(weight,standardWeightMin,standardWeightMax).text}</td></tr>
+   <tr><td>BMI</td><td>${bmi.toFixed(1)}</td><td>18.5～24.9</td><td>${bmiJ.text}</td></tr>
+   <tr><td>体脂肪率</td><td>${bodyFat.toFixed(1)}%</td><td>${fatMin}～${fatMax}%</td><td>${fatJ.text}</td></tr>
+   <tr><td>筋肉量</td><td>${muscle.toFixed(1)} kg</td><td>${standardMuscleMin.toFixed(1)}～${standardMuscleMax.toFixed(1)} kg</td><td>${judge(muscle,standardMuscleMin,standardMuscleMax).text}</td></tr>
+   <tr><td>体水分量</td><td>${water.toFixed(1)} kg</td><td>${standardWaterMin.toFixed(1)}～${standardWaterMax.toFixed(1)} kg</td><td>${judge(water,standardWaterMin,standardWaterMax).text}</td></tr>
+   <tr><td>体水分率</td><td>${waterRate.toFixed(1)}%</td><td>${standardWaterRateMin}～${standardWaterRateMax}%</td><td>${waterJ.text}</td></tr>
+   <tr><td>内臓脂肪レベル</td><td>${visceral.toFixed(1)}</td><td>10以下</td><td>${visJ.text}</td></tr>
+   <tr><td>推定骨量</td><td>${bone.toFixed(1)} kg</td><td>${standardBoneMin.toFixed(1)}～${standardBoneMax.toFixed(1)} kg</td><td>${judge(bone,standardBoneMin,standardBoneMax).text}</td></tr>
+  </table>
+ </div>
+
+ <h2>体幹を基準にした部位別バランス</h2>
+ <div class="card good">
+  <b>両腕合計の基準値＝体幹の1/6、片腕の基準値＝体幹の1/12、両脚合計の基準値＝体幹の2/3</b><br>
+  体幹：<strong>${trunk.toFixed(1)} kg</strong>　
+  両腕基準：<span class="highlight">${armTotalRef.toFixed(2)} kg</span>　
+  片腕基準：<span class="highlight">${armRef.toFixed(2)} kg</span>　
+  片脚基準：<span class="highlight">${legRef.toFixed(2)} kg</span>
+  <table class="table">
+   <tr><th>部位</th><th>現在値</th><th>基準値</th><th>差</th><th>基準比</th></tr>
+   <tr><td>右腕</td><td>${armR.toFixed(1)} kg</td><td>${armRef.toFixed(2)}</td><td>${(armR-armRef>=0?"+":"")+(armR-armRef).toFixed(2)}</td><td>${(armR/armRef*100).toFixed(0)}%</td></tr>
+   <tr><td>左腕</td><td>${armL.toFixed(1)} kg</td><td>${armRef.toFixed(2)}</td><td>${(armL-armRef>=0?"+":"")+(armL-armRef).toFixed(2)}</td><td>${(armL/armRef*100).toFixed(0)}%</td></tr>
+   <tr><td>右脚</td><td>${legR.toFixed(1)} kg</td><td>${legRef.toFixed(2)}</td><td>${(legR-legRef>=0?"+":"")+(legR-legRef).toFixed(2)}</td><td>${(legR/legRef*100).toFixed(0)}%</td></tr>
+   <tr><td>左脚</td><td>${legL.toFixed(1)} kg</td><td>${legRef.toFixed(2)}</td><td>${(legL-legRef>=0?"+":"")+(legL-legRef).toFixed(2)}</td><td>${(legL/legRef*100).toFixed(0)}%</td></tr>
+  </table>
+ </div>
+
+ <h2>体脂肪率と筋肉量による体型判定</h2>
+ <div class="chart-box chart-wide"><canvas id="typeChart"></canvas>
+ <div class="note">横軸＝筋肉量、縦軸＝体脂肪率。四象限は「筋肉多×脂肪少」「筋肉多×脂肪多」「筋肉少×脂肪少」「筋肉少×脂肪多」の目安です。</div></div>
+
+ <h2>部位の分析</h2>
+ <div class="chart-grid">
+  <div class="chart-box"><canvas id="muscleRadar"></canvas></div>
+  <div class="chart-box"><canvas id="fatRadar"></canvas></div>
+ </div>
+
+ <h2>ボディバランス</h2>
+ <div class="balance-wrap">
+  <svg class="body-svg" viewBox="0 0 360 500" xmlns="http://www.w3.org/2000/svg">
+   <rect x="0" y="0" width="360" height="500" rx="14" fill="#f7f9fb"/>
+   <line x1="180" y1="45" x2="180" y2="460" stroke="#c9d2dc" stroke-dasharray="4 5"/>
+   <circle cx="180" cy="70" r="30" fill="#dfe6ed" stroke="#758394" stroke-width="2"/>
+   <path d="M150 110 Q180 95 210 110 L220 205 Q210 245 205 285 L225 410 L195 410 L180 290 L165 410 L135 410 L155 285 Q150 245 140 205 Z" fill="#e6ebf0" stroke="#758394" stroke-width="2"/>
+   <path d="M148 120 L95 205 L108 212 L155 155" fill="#e6ebf0" stroke="#758394" stroke-width="2"/>
+   <path d="M212 120 L265 205 L252 212 L205 155" fill="#e6ebf0" stroke="#758394" stroke-width="2"/>
+   <text x="55" y="105" font-size="15" font-weight="bold">左腕 ${armL.toFixed(1)}kg</text>
+   <text x="205" y="105" font-size="15" font-weight="bold">右腕 ${armR.toFixed(1)}kg</text>
+   <text x="35" y="250" font-size="15" font-weight="bold">左脚 ${legL.toFixed(1)}kg</text>
+   <text x="220" y="250" font-size="15" font-weight="bold">右脚 ${legR.toFixed(1)}kg</text>
+   <text x="126" y="215" font-size="15" font-weight="bold">体幹</text>
+   <text x="128" y="235" font-size="15">${trunk.toFixed(1)}kg</text>
+   <text x="75" y="455" font-size="13" fill="#5e6b78">左右差を数値で確認</text>
+  </svg>
+  <div>
+   <h3>左右バランス</h3>
+   <table class="table">
+    <tr><th>部位</th><th>左</th><th>右</th><th>左右差</th></tr>
+    <tr><td>腕</td><td>${armL.toFixed(1)}</td><td>${armR.toFixed(1)}</td><td>${Math.abs(armL-armR).toFixed(1)} kg</td></tr>
+    <tr><td>脚</td><td>${legL.toFixed(1)}</td><td>${legR.toFixed(1)}</td><td>${Math.abs(legL-legR).toFixed(1)} kg</td></tr>
+   </table>
+   <p class="small">写真の「筋肉量左右バランス」を参考に、左右の筋肉量を視覚化しています。</p>
+  </div>
+ </div>
+
+ <h2>脚部筋肉量点数</h2>
+ <div class="chart-box chart-wide"><canvas id="legScoreChart"></canvas>
+ <div class="note">脚部筋肉量点数は「平均脚筋肉量 ÷ 体幹1/3 × 100」で算出した、このページ独自の比較指標です。写真のグラフそのものの公式点数ではありません。</div></div>
+
+ <h2>測定値の一覧</h2>
+ <table class="table">
+  <tr><th>項目</th><th>結果</th><th>標準・目安</th><th>判定・備考</th></tr>
+  <tr><td>体重</td><td>${weight.toFixed(1)} kg</td><td>${standardWeightMin.toFixed(1)}～${standardWeightMax.toFixed(1)} kg</td><td>身長からBMI 18.5～24.9で算出</td></tr>
+  <tr><td>BMI</td><td>${bmi.toFixed(1)}</td><td>18.5～24.9</td><td>${bmiJ.text}</td></tr>
+  <tr><td>体脂肪率</td><td>${bodyFat.toFixed(1)}%</td><td>${fatMin}～${fatMax}%</td><td>${fatJ.text}</td></tr>
+  <tr><td>体脂肪量</td><td>${fatMass.toFixed(1)} kg</td><td>—</td><td>体重×体脂肪率</td></tr>
+  <tr><td>除脂肪量</td><td>${fatFree.toFixed(1)} kg</td><td>—</td><td>体重－体脂肪量</td></tr>
+  <tr><td>筋肉量</td><td>${muscle.toFixed(1)} kg</td><td>${standardMuscleMin.toFixed(1)}～${standardMuscleMax.toFixed(1)} kg</td><td>写真記載の標準範囲</td></tr>
+  <tr><td>体水分量</td><td>${water.toFixed(1)} kg</td><td>${standardWaterMin.toFixed(1)}～${standardWaterMax.toFixed(1)} kg</td><td>体水分率の目安から算出</td></tr>
+  <tr><td>体水分率</td><td>${waterRate.toFixed(1)}%</td><td>${standardWaterRateMin}～${standardWaterRateMax}%</td><td>${waterJ.text}</td></tr>
+  <tr><td>内臓脂肪レベル</td><td>${visceral.toFixed(1)}</td><td>10以下</td><td>${visJ.text}</td></tr>
+  <tr><td>推定骨量</td><td>${bone.toFixed(1)} kg</td><td>${standardBoneMin.toFixed(1)}～${standardBoneMax.toFixed(1)} kg</td><td>写真記載の標準範囲</td></tr>
+ </table>
+
+ <div class="note">
+ ※標準範囲は、体重＝BMI 18.5～24.9から身長別に算出、体脂肪率は年齢・性別目安、筋肉量・推定骨量は添付写真に記載された範囲を使用しています。体水分量は体水分率の目安から換算しています。筋肉総合評価と脚部筋肉量点数は比較用の指標です。
+ 医療的な診断や、TANITA社の公式判定値そのものではありません。
+ </div>
+ `;
+ drawCharts(age,bodyFat,muscle,armR,armL,legR,legL,trunk,legScore,fatMin,fatMax);
+}
+
+function drawCharts(age,bodyFat,muscle,armR,armL,legR,legL,trunk,legScore,fatMin,fatMax){
+ destroyCharts();
+
+ // 体脂肪率×筋肉量の四象限。基準線はこの入力画面の比較用目安。
+ const xMid=50, yMid=(fatMin+fatMax)/2;
+ charts.push(new Chart(document.getElementById("typeChart"),{
+  type:"scatter",
+  data:{
+   datasets:[
+    {label:"現在値",data:[{x:muscle,y:bodyFat}],pointRadius:9},
+    {label:"参考：脂肪少・筋肉多",data:[{x:55,y:16}],pointRadius:5},
+    {label:"参考：脂肪多・筋肉多",data:[{x:55,y:28}],pointRadius:5},
+    {label:"参考：脂肪少・筋肉少",data:[{x:40,y:16}],pointRadius:5},
+    {label:"参考：脂肪多・筋肉少",data:[{x:40,y:28}],pointRadius:5}
+   ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,
+   plugins:{title:{display:true,text:"体脂肪率と筋肉量による体型判定"},legend:{position:"bottom"},
+    tooltip:{callbacks:{label:c=>c.dataset.label+": 筋肉量 "+c.parsed.x.toFixed(1)+"kg / 体脂肪率 "+c.parsed.y.toFixed(1)+"%"}}},
+   scales:{x:{title:{display:true,text:"筋肉量（kg）"},min:35,max:65},
+           y:{title:{display:true,text:"体脂肪率（%）"},min:10,max:35}}
+  }
+ }));
+
+ charts.push(new Chart(document.getElementById("muscleRadar"),{
+  type:"radar",
+  data:{labels:["体幹部","右腕","右脚","左脚","左腕"],
+   datasets:[{label:"筋肉総合評価（基準=100）",
+    data:[
+     100,
+     Math.min(120,armR/(trunk/12)*100),
+     Math.min(120,legR/(trunk/3)*100),
+     Math.min(120,legL/(trunk/3)*100),
+     Math.min(120,armL/(trunk/12)*100)
+    ],fill:true}]},
+  options:{responsive:true,maintainAspectRatio:false,
+   scales:{r:{min:0,max:120,ticks:{stepSize:20},startAngle:0}},
+   plugins:{title:{display:true,text:"筋肉総合評価（0°=体幹部 / 72°=右腕 / 144°=右脚 / 216°=左脚 / 288°=左腕（両腕合計の基準=体幹1/6））"}}}
+ }));
+
+ charts.push(new Chart(document.getElementById("fatRadar"),{
+  type:"radar",
+  data:{labels:["現在の標準上限","22%基準","25%基準","30%基準","32%基準"],
+   datasets:[{label:"体脂肪率総合評価（100以上=基準以内の目安）",
+    data:[Math.min(120,fatMin?fatMax/bodyFat*100:100),Math.min(120,22/bodyFat*100),
+          Math.min(120,25/bodyFat*100),Math.min(120,30/bodyFat*100),Math.min(120,32/bodyFat*100)],fill:true}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{r:{min:0,max:120,ticks:{stepSize:20}}}}
+ }));
+
+ // 写真の年齢軸に近い「参考曲線」。点数は上記の独自指標ではなく表示用の参考値。
+ const ages=[20,30,40,50,60,70,80,90];
+ const ref=[100,94,89,86,84,83,82,79];
+ charts.push(new Chart(document.getElementById("legScoreChart"),{
+  type:"line",
+  data:{labels:ages,datasets:[
+   {label:"参考曲線",data:ref,tension:.25,fill:false},
+   {label:"現在の脚部筋肉量点数",data:ages.map(a=>a===age?legScore:null),pointRadius:8,showLine:false}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+   scales:{x:{title:{display:true,text:"年齢（歳）"}},y:{min:60,max:110,title:{display:true,text:"筋肉量点数"}}},
+   plugins:{title:{display:true,text:"脚部筋肉量点数（参考）"},legend:{position:"bottom"}}
+  }
+ }));
+}
+
+window.addEventListener("load",calculate);
+</script>
+</body>
+</html>
