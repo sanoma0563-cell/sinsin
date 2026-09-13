@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>目標日までのカウントダウン日めくり</title>
+  <style>
+    :root {
+      --bg-color: #f4f1ea;
+      --card-bg: #ffffff;
+      --text-main: #2b2b2b;
+      --text-sub: #8c857b;
+      --accent-color: #d9534f;
+      --shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+      --border-color: #e5e0d8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--text-main);
+    }
+
+    .calendar-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    /* 日めくりカードの外枠 */
+    .tear-off-card {
+      background-color: var(--card-bg);
+      width: 300px;
+      height: 380px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px 20px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* カレンダー上部の金具パーツ */
+    .tear-off-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 16px;
+      background-color: #4a4642;
+      border-top-left-radius: 11px;
+      border-top-right-radius: 11px;
+    }
+
+    .holes {
+      position: absolute;
+      top: 24px;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      padding: 0 40px;
+    }
+
+    .hole {
+      width: 12px;
+      height: 12px;
+      background-color: var(--bg-color);
+      border-radius: 50%;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .date-info {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+      text-align: center;
+      line-height: 1.4;
+    }
+
+    .header-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+      letter-spacing: 0.1em;
+      color: var(--text-sub);
+      margin-top: 5px;
+    }
+
+    /* 数字部分 */
+    .number-display {
+      font-size: 6.5rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--accent-color);
+      font-features-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+    }
+
+    .unit-text {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--text-sub);
+      margin-bottom: 8px;
+    }
+
+    .target-info {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      border-top: 1px dashed var(--border-color);
+      width: 100%;
+      text-align: center;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calendar-container">
+    <div class="tear-off-card">
+      <div class="holes">
+        <div class="hole"></div>
+        <div class="hole"></div>
+      </div>
+      
+      <div class="date-info">
+        今日: <span id="today-date">-</span>
+      </div>
+
+      <div class="header-text">目標日まであと</div>
+      <div class="number-display" id="count">-</div>
+      <div class="unit-text">日（平日・営業日）</div>
+
+      <div class="target-info">
+        目標日: 2027年2月1日
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 日本の祝日（2026年9月〜2027年2月）のリスト (YYYY-MM-DD)
+    const holidays = [
+      "2026-09-21", // 敬老の日
+      "2026-09-22", // 国民の休日
+      "2026-09-23", // 秋分の日
+      "2026-10-12", // スポーツの日
+      "2026-11-03", // 文化の日
+      "2026-11-23", // 勤労感謝の日
+      "2027-01-01", // 元日
+      "2027-01-11"  // 成人の日
+    ];
+
+    // 土日・祝日を除いた営業日数を計算する関数
+    function calculateBusinessDays(startDate, endDate) {
+      let count = 0;
+      let curDate = new Date(startDate.getTime());
+
+      // 開始日から終了日の前日までを判定
+      while (curDate < endDate) {
+        const dayOfWeek = curDate.getDay();
+        
+        // YYYY-MM-DD 形式の文字列を作成
+        const year = curDate.getFullYear();
+        const month = String(curDate.getMonth() + 1).padStart(2, '0');
+        const day = String(curDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6); // 0: 日曜, 6: 土曜
+        const isHoliday = holidays.includes(dateStr);
+
+        // 平日かつ祝日でない場合のみカウント
+        if (!isWeekend && !isHoliday) {
+          count++;
+        }
+
+        // 1日進める
+        curDate.setDate(curDate.getDate() + 1);
+      }
+
+      return count;
+    }
+
+    // メイン処理
+    function initCalendar() {
+      const now = new Date();
+      
+      // 今日の日付を表示用に整形
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const date = now.getDate();
+      const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+      const dayOfWeek = dayNames[now.getDay()];
+      
+      document.getElementById('today-date').textContent = `${year}年${month}月${date}日（${dayOfWeek}）`;
+
+      // 今日の 00:00:00 を設定
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      // 目標日（2027年2月1日）を設定
+      const targetDate = new Date(2027, 1, 1); // 月は0指定のため 1 = 2月
+
+      // カウント計算
+      let remainingDays = 0;
+      if (today < targetDate) {
+        remainingDays = calculateBusinessDays(today, targetDate);
+      }
+
+      document.getElementById('count').textContent = remainingDays;
+    }
+
+    // カレンダーの初期実行
+    initCalendar();
+  </script>
+</body>
+</html>
